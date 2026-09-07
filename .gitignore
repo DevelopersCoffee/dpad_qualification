@@ -29,3 +29,4 @@ ephemeral/
 
 # Coverage
 coverage/
+.flutter-plugins-dependencies
