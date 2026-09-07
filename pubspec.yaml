@@ -1,0 +1,27 @@
+name: dpad_qualification
+description: Device resolution simulator, D-Pad remote control emulator, tablet/foldable aspect-ratio testing harness, and automated UI qualification reporter for Flutter.
+version: 1.0.0
+homepage: https://github.com/DevelopersCoffee/dpad_qualification
+repository: https://github.com/DevelopersCoffee/dpad_qualification
+issue_tracker: https://github.com/DevelopersCoffee/dpad_qualification/issues
+
+topics:
+  - flutter-tv
+  - dpad
+  - responsive-ui
+  - testing
+  - device-simulation
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
