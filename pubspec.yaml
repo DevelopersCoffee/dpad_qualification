@@ -4,6 +4,7 @@ version: 1.0.0
 homepage: https://github.com/DevelopersCoffee/dpad_qualification
 repository: https://github.com/DevelopersCoffee/dpad_qualification
 issue_tracker: https://github.com/DevelopersCoffee/dpad_qualification/issues
+documentation: https://github.com/DevelopersCoffee/dpad_qualification#readme
 
 topics:
   - flutter-tv
@@ -12,6 +13,14 @@ topics:
   - testing
   - device-simulation
 
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
 environment:
   sdk: ^3.12.0
   flutter: ">=3.0.0"
@@ -19,7 +28,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  shared_preferences: ^2.5.0
 
 dev_dependencies:
   flutter_test:

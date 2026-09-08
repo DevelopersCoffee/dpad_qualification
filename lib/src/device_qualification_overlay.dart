@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'resolution_simulator.dart';
 import 'dpad_remote_controller.dart';
@@ -14,12 +17,14 @@ class DeviceQualificationOverlay extends StatefulWidget {
   final Widget child;
   final FormFactorOverrideCallback? onFormFactorOverride;
   final bool autoCycle;
+  final bool enabled;
 
   const DeviceQualificationOverlay({
     super.key,
     required this.child,
     this.onFormFactorOverride,
     this.autoCycle = false,
+    this.enabled = kDebugMode,
   });
 
   @override
@@ -39,7 +44,7 @@ class _DeviceQualificationOverlayState
   // Diagnostic states
   double _fps = 60.0;
   int _droppedFrames = 0;
-  DateTime _lastFrameTime = DateTime.now();
+  Timer? _telemetryTimer;
 
   // Defect logging form states
   final _titleController = TextEditingController();
@@ -50,14 +55,23 @@ class _DeviceQualificationOverlayState
   @override
   void initState() {
     super.initState();
-    _startFpsTicker();
-    if (widget.autoCycle) {
-      _startAutoCycle();
+    if (widget.enabled) {
+      _startFpsTicker();
+      _telemetryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _showPanel) {
+          setState(() {});
+        }
+      });
+      if (widget.autoCycle) {
+        _startAutoCycle();
+      }
     }
   }
 
   @override
   void dispose() {
+    SchedulerBinding.instance.removeTimingsCallback(_onFrameTimings);
+    _telemetryTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -80,22 +94,20 @@ class _DeviceQualificationOverlayState
   }
 
   void _startFpsTicker() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final now = DateTime.now();
-      final difference = now.difference(_lastFrameTime).inMicroseconds;
-      _lastFrameTime = now;
-      if (difference > 0) {
-        final instantFps = 1000000.0 / difference;
-        setState(() {
-          _fps = _fps * 0.95 + instantFps * 0.05;
-          if (difference > 20000) {
-            _droppedFrames++;
-          }
-        });
+    SchedulerBinding.instance.addTimingsCallback(_onFrameTimings);
+  }
+
+  void _onFrameTimings(List<FrameTiming> timings) {
+    for (final timing in timings) {
+      final durationMs = timing.totalSpan.inMicroseconds / 1000.0;
+      if (durationMs > 0) {
+        final instantFps = 1000.0 / durationMs;
+        _fps = _fps * 0.95 + instantFps * 0.05;
+        if (durationMs > 20.0) {
+          _droppedFrames++;
+        }
       }
-      _startFpsTicker();
-    });
+    }
   }
 
   void _updateFormFactorOverride(SimulatedDevice device) {
@@ -141,6 +153,9 @@ ${_descriptionController.text}
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.enabled) {
+      return widget.child;
+    }
     return Stack(
       children: [
         Positioned.fill(
