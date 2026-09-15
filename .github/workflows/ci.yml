@@ -20,13 +20,18 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          cd example && flutter pub get
 
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
 
       - name: Analyze code
         run: flutter analyze --fatal-infos
+
+      - name: Analyze example app
+        run: cd example && flutter analyze --fatal-infos
 
       - name: Run unit tests
         run: flutter test --coverage

@@ -49,6 +49,7 @@ class DpadRemoteController extends StatelessWidget {
     if (key == LogicalKeyboardKey.escape) return PhysicalKeyboardKey.escape;
     if (key == LogicalKeyboardKey.space) return PhysicalKeyboardKey.space;
     if (key == LogicalKeyboardKey.f1) return PhysicalKeyboardKey.f1;
+    if (key == LogicalKeyboardKey.home) return PhysicalKeyboardKey.home;
     return null;
   }
 
@@ -222,12 +223,16 @@ class _IconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Tooltip(
       message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(100),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          child: Icon(icon, color: color, size: 20),
+      child: Semantics(
+        button: true,
+        label: tooltip,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(100),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            child: Icon(icon, color: color, size: 20),
+          ),
         ),
       ),
     );
@@ -242,21 +247,25 @@ class _TextButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white24),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
+    return Semantics(
+      button: true,
+      label: text,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.white24),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            text,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -275,11 +284,7 @@ class _DpadButton extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(100),
-      child: SizedBox(
-        width: 44,
-        height: 44,
-        child: Icon(icon, size: 32),
-      ),
+      child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 32)),
     );
   }
 }

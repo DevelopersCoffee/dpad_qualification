@@ -59,6 +59,95 @@ enum SimulatedDevice {
   bool get isNative => this == SimulatedDevice.native;
 }
 
+/// User-defined viewport preset for devices not covered by [SimulatedDevice].
+class CustomSimulatedDevice {
+  const CustomSimulatedDevice({
+    required this.name,
+    required this.width,
+    required this.height,
+    this.isTv = false,
+  });
+
+  final String name;
+  final double width;
+  final double height;
+  final bool isTv;
+
+  bool get isNative => false;
+}
+
+/// Unified viewport configuration for preset or custom devices.
+class SimulatedViewport {
+  const SimulatedViewport._({
+    required this.name,
+    required this.width,
+    required this.height,
+    required this.isTv,
+    required this.storageKey,
+  });
+
+  final String name;
+  final double width;
+  final double height;
+  final bool isTv;
+  final String storageKey;
+
+  bool get isNative => width == 0 && height == 0;
+
+  factory SimulatedViewport.preset(SimulatedDevice device) {
+    return SimulatedViewport._(
+      name: device.name,
+      width: device.width,
+      height: device.height,
+      isTv: device.isTv,
+      storageKey: 'preset:${device.name}',
+    );
+  }
+
+  factory SimulatedViewport.custom(CustomSimulatedDevice device) {
+    return SimulatedViewport._(
+      name: device.name,
+      width: device.width,
+      height: device.height,
+      isTv: device.isTv,
+      storageKey: 'custom:${device.name}',
+    );
+  }
+
+  static SimulatedViewport? fromStorageKey(
+    String key, {
+    required Iterable<CustomSimulatedDevice> customDevices,
+  }) {
+    if (key.startsWith('preset:')) {
+      final name = key.substring('preset:'.length);
+      for (final device in SimulatedDevice.values) {
+        if (device.name == name) {
+          return SimulatedViewport.preset(device);
+        }
+      }
+      return null;
+    }
+    if (key.startsWith('custom:')) {
+      final name = key.substring('custom:'.length);
+      for (final device in customDevices) {
+        if (device.name == name) {
+          return SimulatedViewport.custom(device);
+        }
+      }
+    }
+    return null;
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is SimulatedViewport && other.storageKey == storageKey;
+  }
+
+  @override
+  int get hashCode => storageKey.hashCode;
+}
+
 /// A widget that constrains and scales its [child] to simulate specific device
 /// screen resolutions and D-Pad navigation modes.
 class ResolutionSimulator extends StatelessWidget {
@@ -67,19 +156,31 @@ class ResolutionSimulator extends StatelessWidget {
     required this.device,
     this.showBezel = true,
     super.key,
-  });
+  }) : viewport = null;
+
+  const ResolutionSimulator.viewport({
+    required this.child,
+    required this.viewport,
+    this.showBezel = true,
+    super.key,
+  }) : device = null;
 
   final Widget child;
-  final SimulatedDevice device;
+  final SimulatedDevice? device;
+  final SimulatedViewport? viewport;
   final bool showBezel;
+
+  SimulatedViewport get _viewport =>
+      viewport ?? SimulatedViewport.preset(device!);
 
   @override
   Widget build(BuildContext context) {
-    if (device.isNative) {
+    final config = _viewport;
+    if (config.isNative) {
       return child;
     }
 
-    final simulatedSize = Size(device.width, device.height);
+    final simulatedSize = Size(config.width, config.height);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -111,7 +212,7 @@ class ResolutionSimulator extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
-                      '${device.name} (${device.width.toInt()} × ${device.height.toInt()})',
+                      '${config.name} (${config.width.toInt()} × ${config.height.toInt()})',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 14,
@@ -150,7 +251,7 @@ class ResolutionSimulator extends StatelessWidget {
                             padding: EdgeInsets.zero,
                             viewPadding: EdgeInsets.zero,
                             viewInsets: EdgeInsets.zero,
-                            navigationMode: device.isTv
+                            navigationMode: config.isTv
                                 ? NavigationMode.directional
                                 : NavigationMode.traditional,
                           ),
