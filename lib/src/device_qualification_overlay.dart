@@ -1,7 +1,14 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
-import 'resolution_simulator.dart';
 import 'dpad_remote_controller.dart';
+import 'github_issue_url.dart';
+import 'network_qualification_hook.dart';
+import 'qualification_settings.dart';
+import 'resolution_simulator.dart';
 
 typedef FormFactorOverrideCallback =
     void Function(String formFactor, String? tvPlatform);
@@ -14,12 +21,21 @@ class DeviceQualificationOverlay extends StatefulWidget {
   final Widget child;
   final FormFactorOverrideCallback? onFormFactorOverride;
   final bool autoCycle;
+  final List<CustomSimulatedDevice> customDevices;
+  final NetworkQualificationHook? networkQualificationHook;
+  final String issueTrackerUrl;
+  final String? screenshotDirectory;
 
   const DeviceQualificationOverlay({
     super.key,
     required this.child,
     this.onFormFactorOverride,
     this.autoCycle = false,
+    this.customDevices = const [],
+    this.networkQualificationHook,
+    this.issueTrackerUrl =
+        'https://github.com/DevelopersCoffee/dpad_qualification/issues',
+    this.screenshotDirectory,
   });
 
   @override
@@ -31,10 +47,13 @@ class _DeviceQualificationOverlayState
     extends State<DeviceQualificationOverlay> {
   bool _showPanel = false;
   bool _showRemote = false;
-  SimulatedDevice _simulatedDevice = SimulatedDevice.native;
+  SimulatedViewport _viewport = SimulatedViewport.preset(
+    SimulatedDevice.native,
+  );
   String _networkProfile = 'Excellent WiFi';
   double _latencyMs = 0;
   bool _showBezel = true;
+  final GlobalKey _captureKey = GlobalKey();
 
   // Diagnostic states
   double _fps = 60.0;
@@ -47,13 +66,69 @@ class _DeviceQualificationOverlayState
   String _severity = 'P2';
   String _category = 'UI / Spacing';
 
+  final _settingsStore = QualificationSettingsStore();
+
   @override
   void initState() {
     super.initState();
     _startFpsTicker();
+    _loadPersistedSettings();
     if (widget.autoCycle) {
       _startAutoCycle();
     }
+  }
+
+  Future<void> _loadPersistedSettings() async {
+    final settings = await _settingsStore.load(
+      customDevices: widget.customDevices,
+    );
+    if (!mounted || settings == null) return;
+    setState(() {
+      _viewport = settings.viewport;
+      _showBezel = settings.showBezel;
+      _networkProfile = settings.networkProfile;
+      _latencyMs = _latencyForProfile(settings.networkProfile);
+      _showRemote = settings.viewport.isTv;
+      if (settings.defectDraft != null) {
+        _titleController.text = settings.defectDraft!.title;
+        _descriptionController.text = settings.defectDraft!.description;
+        _severity = settings.defectDraft!.severity;
+        _category = settings.defectDraft!.category;
+      }
+    });
+    _updateFormFactorOverride(settings.viewport);
+    widget.networkQualificationHook?.call(_networkProfile, _latencyMs);
+  }
+
+  List<SimulatedViewport> get _availableViewports => [
+    for (final device in SimulatedDevice.values)
+      SimulatedViewport.preset(device),
+    for (final device in widget.customDevices) SimulatedViewport.custom(device),
+  ];
+
+  Future<void> _persistSettings() async {
+    await _settingsStore.save(
+      viewport: _viewport,
+      showBezel: _showBezel,
+      networkProfile: _networkProfile,
+      defectDraft: DefectDraft(
+        title: _titleController.text,
+        description: _descriptionController.text,
+        severity: _severity,
+        category: _category,
+      ),
+    );
+  }
+
+  double _latencyForProfile(String profile) {
+    return switch (profile) {
+      'Excellent WiFi' => 10.0,
+      '5 Mbps' => 45.0,
+      '2 Mbps' => 120.0,
+      '1 Mbps' => 250.0,
+      'Offline' => double.infinity,
+      _ => 0.0,
+    };
   }
 
   @override
@@ -64,17 +139,19 @@ class _DeviceQualificationOverlayState
   }
 
   void _startAutoCycle() {
-    int index = 0;
+    final viewports = _availableViewports;
+    var index = 0;
     Future.doWhile(() async {
       await Future<void>.delayed(const Duration(seconds: 8));
       if (!mounted) return false;
-      index = (index + 1) % SimulatedDevice.values.length;
-      final nextDevice = SimulatedDevice.values[index];
+      index = (index + 1) % viewports.length;
+      final nextViewport = viewports[index];
       setState(() {
-        _simulatedDevice = nextDevice;
-        _showRemote = nextDevice.isTv;
+        _viewport = nextViewport;
+        _showRemote = nextViewport.isTv;
       });
-      _updateFormFactorOverride(nextDevice);
+      _updateFormFactorOverride(nextViewport);
+      _persistSettings();
       return true;
     });
   }
@@ -98,28 +175,29 @@ class _DeviceQualificationOverlayState
     });
   }
 
-  void _updateFormFactorOverride(SimulatedDevice device) {
-    if (widget.onFormFactorOverride != null) {
-      if (device.isTv) {
-        widget.onFormFactorOverride!('tv', 'android_tv');
-      } else if (device == SimulatedDevice.tabletLandscape) {
-        widget.onFormFactorOverride!('tablet', null);
-      } else if (device == SimulatedDevice.native) {
-        widget.onFormFactorOverride!('tablet', null);
-      } else {
-        widget.onFormFactorOverride!('mobile', null);
-      }
+  void _updateFormFactorOverride(SimulatedViewport viewport) {
+    if (widget.onFormFactorOverride == null) return;
+    if (viewport.isNative) {
+      widget.onFormFactorOverride!('native', null);
+      return;
+    }
+    if (viewport.isTv) {
+      widget.onFormFactorOverride!('tv', 'android_tv');
+    } else if (viewport.name.contains('Tablet')) {
+      widget.onFormFactorOverride!('tablet', null);
+    } else {
+      widget.onFormFactorOverride!('mobile', null);
     }
   }
 
-  void _copyDefectReport() {
-    final markdown = '''
+  String _defectMarkdown() {
+    return '''
 # [Device Defect Report] ${_titleController.text}
 
 **Severity:** $_severity
 **Category:** $_category
-**Simulated Device Configuration:** ${_simulatedDevice.name} (${_simulatedDevice.width.toInt()}x${_simulatedDevice.height.toInt()})
-**Network Profile:** $_networkProfile (Latency: ${_latencyMs.toInt()}ms)
+**Simulated Device Configuration:** ${_viewport.name} (${_viewport.width.toInt()}x${_viewport.height.toInt()})
+**Network Context Label:** $_networkProfile (Reference latency: ${_latencyMs.isFinite ? '${_latencyMs.toInt()}ms' : 'offline'})
 **Performance Telemetry:** ${_fps.toStringAsFixed(1)} FPS | $_droppedFrames Dropped Frames
 
 ## Description
@@ -129,11 +207,83 @@ ${_descriptionController.text}
 - **Timestamp:** ${DateTime.now().toLocal()}
 - **Framework:** Flutter / D-Pad Qualification Harness
 ''';
+  }
 
-    Clipboard.setData(ClipboardData(text: markdown));
+  void _copyDefectReport() {
+    Clipboard.setData(ClipboardData(text: _defectMarkdown()));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Defect report copied to clipboard in Markdown!'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    _persistSettings();
+  }
+
+  Future<void> _openGitHubIssue() async {
+    final url = buildGitHubIssueUrl(
+      issueTrackerBase: widget.issueTrackerUrl,
+      title: _titleController.text.isEmpty
+          ? 'Device qualification defect'
+          : _titleController.text,
+      body: _defectMarkdown(),
+    );
+    await Clipboard.setData(ClipboardData(text: url.toString()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('GitHub issue URL copied: $url'),
+        backgroundColor: Colors.green,
+      ),
+    );
+    _persistSettings();
+  }
+
+  Future<void> _captureScreenshot() async {
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Screenshot export is not supported on web.'),
+        ),
+      );
+      return;
+    }
+
+    final directoryPath = widget.screenshotDirectory;
+    if (directoryPath == null || directoryPath.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Set screenshotDirectory on DeviceQualificationOverlay.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final boundary =
+        _captureKey.currentContext?.findRenderObject()
+            as RenderRepaintBoundary?;
+    if (boundary == null) return;
+
+    final image = await boundary.toImage();
+    final byteData = await image.toByteData();
+    if (byteData == null) return;
+
+    final directory = Directory(directoryPath);
+    if (!directory.existsSync()) {
+      directory.createSync(recursive: true);
+    }
+
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final safeName = _viewport.name.replaceAll(RegExp(r'[^A-Za-z0-9]+'), '-');
+    final file = File('${directory.path}/qa-$safeName-$timestamp.png');
+    await file.writeAsBytes(byteData.buffer.asUint8List());
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Screenshot saved to ${file.path}'),
         backgroundColor: Colors.green,
       ),
     );
@@ -144,13 +294,16 @@ ${_descriptionController.text}
     return Stack(
       children: [
         Positioned.fill(
-          child: ResolutionSimulator(
-            device: _simulatedDevice,
-            showBezel: _showBezel,
-            child: widget.child,
+          child: RepaintBoundary(
+            key: _captureKey,
+            child: ResolutionSimulator.viewport(
+              viewport: _viewport,
+              showBezel: _showBezel,
+              child: widget.child,
+            ),
           ),
         ),
-        if (_showRemote && _simulatedDevice.isTv)
+        if (_showRemote && _viewport.isTv)
           Positioned(
             right: 20,
             bottom: 100,
@@ -242,14 +395,15 @@ ${_descriptionController.text}
                   ),
                 ),
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Device Qualification Menu',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    const Expanded(
+                      child: Text(
+                        'Device Qualification Menu',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -272,9 +426,12 @@ ${_descriptionController.text}
                     _buildSwitchTile(
                       title: 'Show Screen Bezel',
                       value: _showBezel,
-                      onChanged: (val) => setState(() => _showBezel = val),
+                      onChanged: (val) {
+                        setState(() => _showBezel = val);
+                        _persistSettings();
+                      },
                     ),
-                    if (_simulatedDevice.isTv) ...[
+                    if (_viewport.isTv) ...[
                       _buildSwitchTile(
                         title: 'Show Remote Controller Overlay',
                         value: _showRemote,
@@ -282,7 +439,7 @@ ${_descriptionController.text}
                       ),
                     ],
                     const SizedBox(height: 20),
-                    _buildSectionHeader('Network Emulation'),
+                    _buildSectionHeader('Network Context Label'),
                     const SizedBox(height: 8),
                     _buildNetworkSelector(),
                     const SizedBox(height: 20),
@@ -336,16 +493,35 @@ ${_descriptionController.text}
           ),
           const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetric(
-                'Active Resolution',
-                _simulatedDevice.isNative
-                    ? 'Native'
-                    : '${_simulatedDevice.width.toInt()}x${_simulatedDevice.height.toInt()}',
-                Colors.white70,
+              Expanded(
+                child: _buildMetric(
+                  'Active Resolution',
+                  _viewport.isNative
+                      ? 'Native'
+                      : '${_viewport.width.toInt()}x${_viewport.height.toInt()}',
+                  Colors.white70,
+                ),
               ),
-              _buildMetric('Telemetry Status', 'active', Colors.green),
+              Expanded(
+                child: _buildMetric('Telemetry Status', 'active', Colors.green),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _captureScreenshot,
+                  icon: const Icon(Icons.photo_camera, size: 16),
+                  label: const Text('Screenshot'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white70,
+                    side: const BorderSide(color: Colors.white24),
+                  ),
+                ),
+              ),
             ],
           ),
         ],
@@ -385,6 +561,7 @@ ${_descriptionController.text}
   }
 
   Widget _buildDeviceSelector() {
+    final viewports = _availableViewports;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -392,23 +569,29 @@ ${_descriptionController.text}
         borderRadius: BorderRadius.circular(8),
       ),
       child: DropdownButtonHideUnderline(
-        child: DropdownButton<SimulatedDevice>(
-          value: _simulatedDevice,
+        child: DropdownButton<SimulatedViewport>(
+          value: viewports.firstWhere(
+            (viewport) => viewport.storageKey == _viewport.storageKey,
+            orElse: () => _viewport,
+          ),
           dropdownColor: Colors.grey[900],
           isExpanded: true,
           style: const TextStyle(color: Colors.white, fontSize: 14),
           icon: const Icon(Icons.arrow_drop_down, color: Colors.white70),
-          items: SimulatedDevice.values.map((device) {
-            return DropdownMenuItem(value: device, child: Text(device.name));
+          items: viewports.map((viewport) {
+            return DropdownMenuItem(
+              value: viewport,
+              child: Text(viewport.name),
+            );
           }).toList(),
-          onChanged: (device) {
-            if (device != null) {
-              setState(() {
-                _simulatedDevice = device;
-                if (!device.isTv) _showRemote = false;
-              });
-              _updateFormFactorOverride(device);
-            }
+          onChanged: (viewport) {
+            if (viewport == null) return;
+            setState(() {
+              _viewport = viewport;
+              if (!viewport.isTv) _showRemote = false;
+            });
+            _updateFormFactorOverride(viewport);
+            _persistSettings();
           },
         ),
       ),
@@ -462,15 +645,13 @@ ${_descriptionController.text}
             if (val != null) {
               setState(() {
                 _networkProfile = val;
-                _latencyMs = switch (val) {
-                  'Excellent WiFi' => 10.0,
-                  '5 Mbps' => 45.0,
-                  '2 Mbps' => 120.0,
-                  '1 Mbps' => 250.0,
-                  'Offline' => double.infinity,
-                  _ => 0.0,
-                };
+                _latencyMs = _latencyForProfile(val);
               });
+              widget.networkQualificationHook?.call(
+                _networkProfile,
+                _latencyMs,
+              );
+              _persistSettings();
             }
           },
         );
@@ -484,6 +665,7 @@ ${_descriptionController.text}
         TextField(
           controller: _titleController,
           style: const TextStyle(color: Colors.white, fontSize: 13),
+          onChanged: (_) => _persistSettings(),
           decoration: InputDecoration(
             labelText: 'Defect Summary / Title',
             labelStyle: const TextStyle(color: Colors.white54),
@@ -494,7 +676,6 @@ ${_descriptionController.text}
         ),
         const SizedBox(height: 12),
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
               'Severity: ',
@@ -507,28 +688,41 @@ ${_descriptionController.text}
               items: ['P0', 'P1', 'P2', 'P3', 'P4'].map((s) {
                 return DropdownMenuItem(value: s, child: Text(s));
               }).toList(),
-              onChanged: (val) => setState(() => _severity = val ?? 'P2'),
+              onChanged: (val) {
+                setState(() => _severity = val ?? 'P2');
+                _persistSettings();
+              },
             ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
             const Text(
               'Category: ',
               style: TextStyle(color: Colors.white, fontSize: 13),
             ),
-            DropdownButton<String>(
-              value: _category,
-              dropdownColor: Colors.grey[900],
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              items:
-                  [
-                    'UI / Spacing',
-                    'Navigation / Focus',
-                    'Streaming Quality',
-                    'EPG Timeline',
-                    'Search/Inputs',
-                  ].map((c) {
-                    return DropdownMenuItem(value: c, child: Text(c));
-                  }).toList(),
-              onChanged: (val) =>
-                  setState(() => _category = val ?? 'UI / Spacing'),
+            Expanded(
+              child: DropdownButton<String>(
+                value: _category,
+                isExpanded: true,
+                dropdownColor: Colors.grey[900],
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                items:
+                    [
+                      'UI / Spacing',
+                      'Navigation / Focus',
+                      'Streaming Quality',
+                      'EPG Timeline',
+                      'Search/Inputs',
+                    ].map((c) {
+                      return DropdownMenuItem(value: c, child: Text(c));
+                    }).toList(),
+                onChanged: (val) {
+                  setState(() => _category = val ?? 'UI / Spacing');
+                  _persistSettings();
+                },
+              ),
             ),
           ],
         ),
@@ -537,6 +731,7 @@ ${_descriptionController.text}
           controller: _descriptionController,
           style: const TextStyle(color: Colors.white, fontSize: 13),
           maxLines: 4,
+          onChanged: (_) => _persistSettings(),
           decoration: InputDecoration(
             labelText: 'Defect Details / Steps to Reproduce',
             labelStyle: const TextStyle(color: Colors.white54),
@@ -556,6 +751,23 @@ ${_descriptionController.text}
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6C63FF),
               foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          height: 44,
+          child: OutlinedButton.icon(
+            onPressed: _openGitHubIssue,
+            icon: const Icon(Icons.open_in_new, size: 16),
+            label: const Text('Copy GitHub Issue URL'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white24),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
