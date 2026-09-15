@@ -1,5 +1,6 @@
 ## 1.1.0
 
+* Added `enabled` toggle (defaults to `kDebugMode`) and optimized FPS telemetry via frame timings.
 * Added `SimulatedViewport`, `CustomSimulatedDevice`, and `ResolutionSimulator.viewport` for custom device presets.
 * Added `writeQualificationReportFiles()` for JSON + Markdown report export to disk.
 * Added `NetworkQualificationHook` so host apps can react to network context label changes.

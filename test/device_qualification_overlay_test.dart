@@ -64,7 +64,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
+      const MaterialApp(
         home: Scaffold(
           body: DeviceQualificationOverlay(child: SizedBox.shrink()),
         ),
