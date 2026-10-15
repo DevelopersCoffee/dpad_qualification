@@ -15,7 +15,7 @@ Ordered work to close gaps between the 2026-09-15 v1.1 roadmap snapshot and a tr
 | 1.1 | Reproduce CI failure locally: `flutter pub get && dart pub publish --dry-run` | Eng | Match exit 65 + `analysis_options.yaml` warning |
 | 1.2 | Fix: commit intentional `analysis_options.yaml` exclude **or** stop mutating tree in CI (pin lockfiles / skip dry-run mutation) | Eng | `dart pub publish --dry-run` exit 0 on clean tree |
 | 1.3 | Align `.github/workflows/publish.yml` Flutter version with `sdk: ^3.12.0` (verify with `flutter --version`) | Eng | `flutter pub get` succeeds on publish job image |
-| 1.4 | Re-run GitHub Actions on `main` | Eng | CI badge green |
+| 1.4 | Re-run GitHub Actions on `main` | Eng | CI workflow **Done** (all steps exit 0) |
 
 ## Phase 2 — Close Track B test debt (P1)
 
@@ -46,7 +46,7 @@ Execute in order (each step adds tests only; keep behavior unchanged unless bugs
 Use `PROJECT_RELEASE_CHECKLIST.md`. For a **patch** after docs/tests (e.g. 1.1.1):
 
 - Changelog section for CI + test-only changes.
-- Tag only after CI green and dry-run clean.
+- Tag only after CI is **Done** (all steps) and dry-run is **Done**.
 - **Do not merge docs PR into release tag** without separate release approval.
 
 ## Out of scope for this plan

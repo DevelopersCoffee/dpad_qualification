@@ -6,7 +6,7 @@ Prioritized from the 2026-09-15 v1.1 roadmap snapshot and the 2026-10-15 repo au
 
 | ID | Item | Status | Notes |
 | --- | --- | --- | --- |
-| H-1 | CI green on `main` | **Blocked** | Fails at `dart pub publish --dry-run` when `analysis_options.yaml` is mutated during `flutter pub get` ([run 34933283139](https://github.com/DevelopersCoffee/dpad_qualification/actions/runs/34933283139)) |
+| H-1 | CI passing on `main` | **Blocked** | Fails at `dart pub publish --dry-run` when `analysis_options.yaml` is mutated during `flutter pub get` ([run 34933283139](https://github.com/DevelopersCoffee/dpad_qualification/actions/runs/34933283139)) |
 | H-2 | Publish workflow Flutter SDK matches `environment: sdk: ^3.12.0` | **Needs verification** | `.github/workflows/publish.yml` pins `3.29.3`; local check of that tag yielded Dart 3.7.2 (incompatible with current pubspec). Confirm pin or bump before next tag |
 | H-3 | Commit or revert Flutter-generated `analysis_options.yaml` exclude | **Pending** | Stabilizes dry-run; document in release checklist |
 
@@ -20,7 +20,7 @@ Prioritized from the 2026-09-15 v1.1 roadmap snapshot and the 2026-10-15 repo au
 | T-4 | `DeviceQualificationPhaseStatus.parse` edge cases | **Pending** | `test/device_qualification_report_test.dart` |
 | T-5 | `toPublicMap()` shape / blocking findings aggregation | **Pending** | `test/device_qualification_report_test.dart` |
 | T-6 | Defect draft persistence round-trip | **Needs verification** | Overlay test with `SharedPreferences` mock |
-| T-7 | `MediaQuery.navigationMode` for TV presets | **Needs verification** | `test/resolution_simulator_test.dart` (roadmap marked partial) |
+| T-7 | `MediaQuery.navigationMode` for TV presets | **Needs verification** | `test/resolution_simulator_test.dart` — no assertion yet |
 | T-8 | Optional golden: simulator bezel | **Deferred** | `test/resolution_simulator_test.dart` |
 
 ## P2 — docs & DX (Track A / design review)

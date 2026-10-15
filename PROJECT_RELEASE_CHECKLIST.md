@@ -6,7 +6,7 @@ Use before tagging and publishing. **v1.1.0 is already on pub.dev** (2026-09-15)
 
 | Step | Status | Evidence / notes |
 | --- | --- | --- |
-| Version bumped in `pubspec.yaml` | **N/A** (still `1.1.0` on `main`) | `pubspec.yaml` |
+| Version bumped in `pubspec.yaml` | **Pending** | Still `1.1.0` on `main` until the next release is scoped |
 | `CHANGELOG.md` updated for target version | **Pending** for next release | Last entry **1.1.0** |
 | `dart format` clean | **Done** (2026-10-15 VM) | exit 0 |
 | `flutter analyze --fatal-infos` (root) | **Done** | exit 0 |
@@ -14,9 +14,9 @@ Use before tagging and publishing. **v1.1.0 is already on pub.dev** (2026-09-15)
 | `flutter test` (all unit/widget) | **Done** — 15/15 | 2026-10-15 VM, Flutter 3.47.7 |
 | Example integration test | **Needs verification** | Requires device target; see `PROJECT_STATUS.md` |
 | `dart pub publish --dry-run` clean (no git dirty warnings) | **Blocked** | CI + local: `analysis_options.yaml` modified warning → exit 65 |
-| GitHub Actions CI green | **Blocked** | Latest `main` run failed on dry-run step |
+| GitHub Actions CI passing | **Blocked** | Latest `main` run failed on dry-run step |
 | Publish workflow Flutter matches SDK constraint | **Needs verification** | `publish.yml` → `3.29.3` vs `sdk: ^3.12.0` |
-| README / public API docs accurate | **Partial** | `autoCycle`, platform limits still **Pending** |
+| README / public API docs accurate | **Pending** | Missing: `autoCycle` and platform limits for keyboard injection (see `PROJECT_BACKLOG.md` D-1, D-2) |
 | Security note: QA-only overlay / clipboard | **Pending** | Eng review item; not in README |
 
 ## Tag & GitHub

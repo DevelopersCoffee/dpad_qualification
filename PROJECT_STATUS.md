@@ -22,14 +22,14 @@ Flutter **3.47.7** / Dart **3.13.5** (satisfies `environment: sdk: ^3.12.0`).
 
 | Check | Command | Result |
 | --- | --- | --- |
-| Format | `dart format --output=none --set-exit-if-changed .` | **Pass** (exit 0) |
-| Analyze (package) | `flutter analyze --fatal-infos` | **Pass** |
-| Analyze (example) | `cd example && flutter analyze --fatal-infos` | **Pass** |
-| Unit / widget tests | `flutter test --coverage` | **Pass** — **15** tests |
-| Publish dry-run | `dart pub publish --dry-run` | **Warning** — `analysis_options.yaml` reported modified after `flutter pub get` (exit 65); same failure mode as [CI run 34933283139](https://github.com/DevelopersCoffee/dpad_qualification/actions/runs/34933283139) |
-| Example integration test | `cd example && flutter test integration_test/qualification_test.dart` | **Blocked** on this VM — no supported device (`example` has no Linux/Web runner targets) |
+| Format | `dart format --output=none --set-exit-if-changed .` | **Done** (exit 0) |
+| Analyze (package) | `flutter analyze --fatal-infos` | **Done** |
+| Analyze (example) | `cd example && flutter analyze --fatal-infos` | **Done** |
+| Unit / widget tests | `flutter test --coverage` | **Done** (15 tests, exit 0) |
+| Publish dry-run | `dart pub publish --dry-run` | **Blocked** — `analysis_options.yaml` reported modified after `flutter pub get` (exit 65); same failure mode as [CI run 34933283139](https://github.com/DevelopersCoffee/dpad_qualification/actions/runs/34933283139) |
+| Example integration test | `cd example && flutter test integration_test/qualification_test.dart` | **Blocked** — no supported device on audit VM (`example` has no Linux/Web runner targets) |
 
-**CI on `main`:** Latest workflow run **failed** on the publish dry-run step (not on analyze/test). Badge may show red until dry-run policy is fixed.
+**CI on `main`:** Latest workflow run is **Blocked** at the publish dry-run step (analyze/test steps completed in that run). Badge may show red until dry-run policy is fixed.
 
 ## v1.1 roadmap milestone map
 
@@ -39,24 +39,24 @@ Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verifica
 
 | Milestone | Status | Implementation | Tests / evidence |
 | --- | --- | --- | --- |
-| Home → `PhysicalKeyboardKey` mapping | **Done** | `lib/src/dpad_remote_controller.dart` | Commit `1bdf39e`; `flutter test test/dpad_remote_controller_test.dart` (Home dispatch) — **Pass** |
+| Home → `PhysicalKeyboardKey` mapping | **Done** | `lib/src/dpad_remote_controller.dart` | Commit `1bdf39e`; `flutter test test/dpad_remote_controller_test.dart` (Home dispatch) — green on VM |
 | `onFormFactorOverride`: native ≠ tablet | **Done** | `lib/src/device_qualification_overlay.dart` (`'native'`) | Commit `1bdf39e`; no dedicated widget test — **Needs verification** |
-| `shared_preferences`: wire or remove | **Done** | `lib/src/qualification_settings.dart`, `pubspec.yaml` | Used in overlay load/save; overlay tests mock prefs — **Pass** |
-| README: devices, APIs, reports import, `showBezel` | **Partial → see rows** | `README.md` | Device table + report example + `showBezel` + `onFormFactorOverride` — **Done**; `autoCycle` undocumented — **Pending** |
+| `shared_preferences`: wire or remove | **Done** | `lib/src/qualification_settings.dart`, `pubspec.yaml` | Used in overlay load/save; overlay tests mock prefs — green on VM |
+| README: devices, APIs, reports import, `showBezel` | **Pending** | `README.md` | Missing: document `autoCycle` (device table, report example, `showBezel`, `onFormFactorOverride`, and `qualification_reports.dart` import are already documented) |
 | Report builder README example | **Done** | `README.md` § Headless Qualification Report | — |
-| Land test / format / CI tweaks | **Done** | `.github/workflows/ci.yml`, `2122b0d`, `1bdf39e` | CI includes `example` analyze — **Done** |
+| Land test / format / CI tweaks | **Done** | `.github/workflows/ci.yml`, `2122b0d`, `1bdf39e` | CI includes `example` analyze |
 
 ### Track B — test coverage
 
 | Milestone | Status | Implementation | Tests / evidence |
 | --- | --- | --- | --- |
-| Overlay: panel toggle | **Done** | `lib/src/device_qualification_overlay.dart` | `test/device_qualification_overlay_test.dart` — **Pass** |
-| Overlay: device switch | **Done** | same | same — **Pass** |
+| Overlay: panel toggle | **Done** | `lib/src/device_qualification_overlay.dart` | `test/device_qualification_overlay_test.dart` — green on VM |
+| Overlay: device switch | **Done** | same | same — green on VM |
 | Overlay: bezel toggle | **Pending** | Bezel UI in overlay | No overlay bezel test (simulator bezel only in `test/resolution_simulator_test.dart`) |
-| Overlay: defect clipboard | **Done** | same | `DeviceQualificationOverlay copies defect report` — **Pass** |
+| Overlay: defect clipboard | **Done** | same | `DeviceQualificationOverlay copies defect report` — green on VM |
 | All remote keys dispatch | **Pending** | `lib/src/dpad_remote_controller.dart` | Only Home + back/power covered; arrows/OK/menu/play not asserted |
 | `autoCycle` timer (fake async) | **Pending** | `_startAutoCycle()` in overlay | Test only validates viewport list composition, not timer rotation |
-| Report: `toPublicMap()`, parse edges, blocking findings | **Partial** | `lib/src/device_qualification_report.dart` | Missing-phase / pass tests in `test/device_qualification_report_test.dart` — **Pass**; no `toPublicMap` or `parse()` edge tests — **Pending** |
+| Report: `toPublicMap()`, parse edges, blocking findings | **Pending** | `lib/src/device_qualification_report.dart` | Missing: `toPublicMap()` and `DeviceQualificationPhaseStatus.parse()` edge-case tests; existing build/missing-phase tests in `test/device_qualification_report_test.dart` — green on VM |
 | CI: `flutter analyze example/` | **Done** | `.github/workflows/ci.yml` | — |
 | Golden: `ResolutionSimulator` bezel | **Deferred** | — | Roadmap optional; not implemented |
 
@@ -65,8 +65,8 @@ Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verifica
 | Milestone | Status | Implementation | Tests / evidence |
 | --- | --- | --- | --- |
 | Rename to “Network Context Label” (no simulation claim) | **Done** | Overlay copy + `README.md` | Visual/copy in `device_qualification_overlay.dart` |
-| `NetworkQualificationHook` (roadmap v1.2; shipped in 1.1) | **Done** | `lib/src/network_qualification_hook.dart`, overlay wiring | Minimal unit-style test in overlay test file — **Pass** |
-| File export JSON + Markdown | **Done** | `lib/src/report_file_export.dart`, `qualification_reports.dart` | `test/report_file_export_test.dart` — **Pass** |
+| `NetworkQualificationHook` (roadmap v1.2; shipped in 1.1) | **Done** | `lib/src/network_qualification_hook.dart`, overlay wiring | Minimal unit-style test in overlay test file — green on VM |
+| File export JSON + Markdown | **Done** | `lib/src/report_file_export.dart`, `qualification_reports.dart` | `test/report_file_export_test.dart` — green on VM |
 | Persist defect draft list | **Done** | `QualificationSettingsStore.defectDraftKey` | No test asserting draft round-trip — **Needs verification** |
 
 ### Track D — differentiation
@@ -74,9 +74,9 @@ Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verifica
 | Milestone | Status | Implementation | Tests / evidence |
 | --- | --- | --- | --- |
 | Screenshot capture + watermark path | **Done** | `_captureScreenshot()` in overlay | No automated test (platform / directory dependent) — **Needs verification** |
-| GitHub issue prefill URL | **Done** | `lib/src/github_issue_url.dart` | `test/github_issue_url_test.dart` — **Pass** |
-| `CustomSimulatedDevice` / custom viewport API | **Done** | `lib/src/resolution_simulator.dart` | Overlay + simulator tests — **Pass** |
-| Example `integration_test` | **Partial** | `example/integration_test/qualification_test.dart` | File exists; VM run **Blocked** (no device target). Rerun: add `linux`/`web` to `example` or use Android TV / Fire TV emulator |
+| GitHub issue prefill URL | **Done** | `lib/src/github_issue_url.dart` | `test/github_issue_url_test.dart` — green on VM |
+| `CustomSimulatedDevice` / custom viewport API | **Done** | `lib/src/resolution_simulator.dart` | Overlay + simulator tests — green on VM |
+| Example `integration_test` | **Needs verification** | `example/integration_test/qualification_test.dart` | Missing: successful run on CI or maintainer VM (audit VM had no device target; add `linux`/`web` to `example` or use Android TV / Fire TV emulator) |
 | Platform note: `HardwareKeyboard` desktop/web-first | **Pending** | — | Not documented in `README.md` |
 
 ### GSTACK design / DX follow-ups (from roadmap review)
@@ -87,7 +87,7 @@ Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verifica
 | Snackbar on clipboard failure | **Pending** | Overlay always shows success snackbar | — |
 | Empty defect list UI state | **Pending** | — | — |
 | Overlay control semantics (beyond remote) | **Pending** | — | — |
-| Public dartdoc | **Pending** | Partial `///` on some types | — |
+| Public dartdoc | **Pending** | Some public types still lack `///` dartdoc | — |
 | Example README screenshots | **Pending** | `example/README.md` | — |
 
 ### Scope explicitly NOT IN (roadmap)
@@ -111,6 +111,6 @@ Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verifica
 
 - **v1.1.0** is **published** on pub.dev and tagged in git; changelog sections for **1.0.1** and **1.1.0** describe work that landed in PR #1 / tag `v1.1.0`.
 - **`main` is one commit ahead** of tag `v1.1.0` (publish workflow pin only).
-- **Primary engineering blockers** before calling the repo “green”: CI publish dry-run failure; publish workflow Flutter pin vs `sdk: ^3.12.0` compatibility (**Needs verification** on pinned `3.29.3`); test gaps in Track B and design follow-ups in backlog.
+- **Primary engineering blockers** before treating stabilization as **Done**: CI publish dry-run **Blocked**; publish workflow Flutter pin vs `sdk: ^3.12.0` compatibility (**Needs verification** on pinned `3.29.3`); test gaps in Track B and design follow-ups in backlog.
 
 See `PROJECT_BACKLOG.md`, `PROJECT_EXECUTION_PLAN.md`, and `PROJECT_RELEASE_CHECKLIST.md` for next actions.
