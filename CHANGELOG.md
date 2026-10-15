@@ -1,3 +1,9 @@
+## 1.1.1
+
+* Pin CI and pub.dev publish workflows to Flutter 3.47.7 (Dart 3.12+ compatible with `environment: sdk: ^3.12.0`).
+* Commit `analysis_options.yaml` `build/**` exclude so `flutter pub get` no longer dirties the tree and `dart pub publish --dry-run` passes in CI.
+* Add project status, backlog, execution plan, and release checklist docs (`PROJECT_*.md`).
+
 ## 1.1.0
 
 * Added `enabled` toggle (defaults to `kDebugMode`) and optimized FPS telemetry via frame timings.
