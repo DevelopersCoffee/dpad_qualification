@@ -281,10 +281,14 @@ class _DpadButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(100),
-      child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 32)),
+    return Semantics(
+      button: true,
+      label: 'D-Pad ${icon.toString()}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(100),
+        child: SizedBox(width: 44, height: 44, child: Icon(icon, size: 32)),
+      ),
     );
   }
 }

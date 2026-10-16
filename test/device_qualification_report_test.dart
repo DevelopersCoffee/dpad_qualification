@@ -46,4 +46,54 @@ void main() {
       expect(report.findings.first.code, equals('missing_phase_evidence'));
     },
   );
+
+  test('DeviceQualificationPhaseStatus.parse accepts aliases', () {
+    expect(
+      DeviceQualificationPhaseStatus.parse('passed'),
+      DeviceQualificationPhaseStatus.passed,
+    );
+    expect(
+      DeviceQualificationPhaseStatus.parse(' pass '),
+      DeviceQualificationPhaseStatus.passed,
+    );
+    expect(
+      DeviceQualificationPhaseStatus.parse('FAIL'),
+      DeviceQualificationPhaseStatus.failed,
+    );
+    expect(
+      DeviceQualificationPhaseStatus.parse('waive'),
+      DeviceQualificationPhaseStatus.waived,
+    );
+    expect(
+      () => DeviceQualificationPhaseStatus.parse('unknown'),
+      throwsArgumentError,
+    );
+  });
+
+  test('toPublicMap includes blocking findings and summary', () {
+    const builder = DeviceQualificationReportBuilder();
+    final report = builder.build(
+      reportId: 'rpt_map',
+      campaignId: 'cmp_map',
+      deviceName: 'Fire TV',
+      appProfile: 'qa',
+      phaseStatuses: {'phase1_splash': DeviceQualificationPhaseStatus.failed},
+      defectCounts: {'phase1_splash': 2},
+    );
+
+    expect(report.completeForIssueEvidence, isFalse);
+    expect(
+      report.findings.any((f) => f.blocking && f.code == 'failed_phase'),
+      isTrue,
+    );
+
+    final map = report.toPublicMap();
+    expect(map['reportId'], 'rpt_map');
+    expect(map['summary'], isA<Map<String, Object?>>());
+    final summary = map['summary']! as Map<String, Object?>;
+    expect(summary['completeForIssueEvidence'], isFalse);
+    expect(summary['failed'], 1);
+    final phases = map['phases']! as List<Object?>;
+    expect(phases.first, isA<Map<String, Object?>>());
+  });
 }

@@ -83,9 +83,11 @@ void main() {
     final fields = find.byType(TextField);
     await tester.enterText(fields.at(0), 'Broken focus ring');
     await tester.enterText(fields.at(1), 'Navigate down twice');
-    await tester.tap(exportButton);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.runAsync(() async {
+      await tester.tap(exportButton);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pumpAndSettle();
 
     expect(
       find.text('Defect report copied to clipboard in Markdown!'),
@@ -139,6 +141,82 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text('Apple TV 4K'), findsOneWidget);
+  });
+
+  testWidgets('DeviceQualificationOverlay toggles screen bezel', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DeviceQualificationOverlay(child: SizedBox.shrink()),
+      ),
+    );
+
+    await openPanel(tester);
+
+    await tester.tap(find.byType(DropdownButton<SimulatedViewport>));
+    await tester.pump();
+    await tester.tap(find.text('Android TV 1080p').last);
+    await tester.pump();
+
+    final bezelTile = find.widgetWithText(SwitchListTile, 'Show Screen Bezel');
+    expect(tester.widget<SwitchListTile>(bezelTile).value, isTrue);
+    await tester.tap(bezelTile);
+    await tester.pump();
+    expect(tester.widget<SwitchListTile>(bezelTile).value, isFalse);
+  });
+
+  testWidgets('DeviceQualificationOverlay autoCycle advances viewport', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DeviceQualificationOverlay(
+          autoCycle: true,
+          autoCycleInterval: Duration(milliseconds: 100),
+          child: SizedBox.shrink(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    expect(find.text('Native (Full Screen)'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump();
+
+    expect(find.textContaining('Mobile Browser Fallback'), findsWidgets);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('DeviceQualificationOverlay shows empty defect draft hint', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: DeviceQualificationOverlay(child: SizedBox.shrink()),
+      ),
+    );
+
+    await openPanel(tester);
+
+    expect(
+      find.text(
+        'No defect draft yet. Add a title and details before exporting.',
+      ),
+      findsOneWidget,
+    );
   });
 
   test('NetworkQualificationHook receives profile changes', () {

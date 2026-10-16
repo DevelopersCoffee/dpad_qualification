@@ -29,11 +29,15 @@ class DeviceQualificationOverlay extends StatefulWidget {
   final String? screenshotDirectory;
   final bool enabled;
 
+  /// Delay between simulated device changes when [autoCycle] is true.
+  final Duration autoCycleInterval;
+
   const DeviceQualificationOverlay({
     super.key,
     required this.child,
     this.onFormFactorOverride,
     this.autoCycle = false,
+    this.autoCycleInterval = const Duration(seconds: 8),
     this.customDevices = const [],
     this.networkQualificationHook,
     this.issueTrackerUrl =
@@ -63,6 +67,7 @@ class _DeviceQualificationOverlayState
   double _fps = 60.0;
   int _droppedFrames = 0;
   Timer? _telemetryTimer;
+  Timer? _autoCycleTimer;
 
   // Defect logging form states
   final _titleController = TextEditingController();
@@ -146,6 +151,7 @@ class _DeviceQualificationOverlayState
   void dispose() {
     SchedulerBinding.instance.removeTimingsCallback(_onFrameTimings);
     _telemetryTimer?.cancel();
+    _autoCycleTimer?.cancel();
     _titleController.dispose();
     _descriptionController.dispose();
     super.dispose();
@@ -154,9 +160,9 @@ class _DeviceQualificationOverlayState
   void _startAutoCycle() {
     final viewports = _availableViewports;
     var index = 0;
-    Future.doWhile(() async {
-      await Future<void>.delayed(const Duration(seconds: 8));
-      if (!mounted) return false;
+    _autoCycleTimer?.cancel();
+    _autoCycleTimer = Timer.periodic(widget.autoCycleInterval, (_) {
+      if (!mounted) return;
       index = (index + 1) % viewports.length;
       final nextViewport = viewports[index];
       setState(() {
@@ -165,7 +171,6 @@ class _DeviceQualificationOverlayState
       });
       _updateFormFactorOverride(nextViewport);
       _persistSettings();
-      return true;
     });
   }
 
@@ -220,15 +225,26 @@ ${_descriptionController.text}
 ''';
   }
 
-  void _copyDefectReport() {
-    Clipboard.setData(ClipboardData(text: _defectMarkdown()));
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Defect report copied to clipboard in Markdown!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-    _persistSettings();
+  Future<void> _copyDefectReport() async {
+    try {
+      await Clipboard.setData(ClipboardData(text: _defectMarkdown()));
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Defect report copied to clipboard in Markdown!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      _persistSettings();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not copy defect report to clipboard.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   Future<void> _openGitHubIssue() async {
@@ -336,43 +352,49 @@ ${_descriptionController.text}
           bottom: 12,
           child: Opacity(
             opacity: _showPanel ? 0.3 : 0.9,
-            child: GestureDetector(
-              onTap: () => setState(() => _showPanel = !_showPanel),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C63FF), Color(0xFF3F3D56)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
+            child: Semantics(
+              button: true,
+              label: _showPanel
+                  ? 'Close device qualification menu'
+                  : 'Open device qualification menu',
+              child: GestureDetector(
+                onTap: () => setState(() => _showPanel = !_showPanel),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
                   ),
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black26,
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6C63FF), Color(0xFF3F3D56)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.bug_report, color: Colors.white, size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                      'QA OVERLAY',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
-                        decoration: TextDecoration.none,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bug_report, color: Colors.white, size: 18),
+                      SizedBox(width: 6),
+                      Text(
+                        'QA OVERLAY',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          decoration: TextDecoration.none,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -420,9 +442,13 @@ ${_descriptionController.text}
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70),
-                      onPressed: () => setState(() => _showPanel = false),
+                    Semantics(
+                      button: true,
+                      label: 'Close qualification panel',
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white70),
+                        onPressed: () => setState(() => _showPanel = false),
+                      ),
                     ),
                   ],
                 ),
@@ -617,15 +643,19 @@ ${_descriptionController.text}
     required bool value,
     required ValueChanged<bool> onChanged,
   }) {
-    return SwitchListTile(
-      title: Text(
-        title,
-        style: const TextStyle(color: Colors.white, fontSize: 13),
+    return Semantics(
+      toggled: value,
+      label: title,
+      child: SwitchListTile(
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontSize: 13),
+        ),
+        value: value,
+        onChanged: onChanged,
+        contentPadding: EdgeInsets.zero,
+        dense: true,
       ),
-      value: value,
-      onChanged: onChanged,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
     );
   }
 
@@ -674,8 +704,20 @@ ${_descriptionController.text}
   }
 
   Widget _buildDefectForm() {
+    final draftEmpty =
+        _titleController.text.trim().isEmpty &&
+        _descriptionController.text.trim().isEmpty;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (draftEmpty)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 12),
+            child: Text(
+              'No defect draft yet. Add a title and details before exporting.',
+              style: TextStyle(color: Colors.white54, fontSize: 12),
+            ),
+          ),
         TextField(
           controller: _titleController,
           style: const TextStyle(color: Colors.white, fontSize: 13),
@@ -758,15 +800,23 @@ ${_descriptionController.text}
         SizedBox(
           width: double.infinity,
           height: 44,
-          child: ElevatedButton.icon(
-            onPressed: _copyDefectReport,
-            icon: const Icon(Icons.content_copy, size: 16, color: Colors.white),
-            label: const Text('Export Report to Clipboard'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF6C63FF),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          child: Semantics(
+            button: true,
+            label: 'Export defect report to clipboard',
+            child: ElevatedButton.icon(
+              onPressed: _copyDefectReport,
+              icon: const Icon(
+                Icons.content_copy,
+                size: 16,
+                color: Colors.white,
+              ),
+              label: const Text('Export Report to Clipboard'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF6C63FF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -775,15 +825,19 @@ ${_descriptionController.text}
         SizedBox(
           width: double.infinity,
           height: 44,
-          child: OutlinedButton.icon(
-            onPressed: _openGitHubIssue,
-            icon: const Icon(Icons.open_in_new, size: 16),
-            label: const Text('Copy GitHub Issue URL'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.white24),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+          child: Semantics(
+            button: true,
+            label: 'Copy GitHub issue URL for defect',
+            child: OutlinedButton.icon(
+              onPressed: _openGitHubIssue,
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('Copy GitHub Issue URL'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white24),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),

@@ -24,7 +24,7 @@ Add `dpad_qualification` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dpad_qualification: ^1.1.0
+  dpad_qualification: ^1.1.2
 ```
 
 ---
@@ -169,6 +169,19 @@ Reports-only import path: `package:dpad_qualification/qualification_reports.dart
 Set `showBezel: false` on `ResolutionSimulator` to hide the device label and bezel chrome.
 
 Network context labels in the overlay annotate defect reports with reference latency values. They do not throttle network traffic; wire your own HTTP client if you need real throttling.
+
+### Optional overlay APIs
+
+* **`autoCycle`**: When `true`, the overlay rotates through every preset (and custom) viewport on a timer. Use for soak testing or demo loops. Optional **`autoCycleInterval`** adjusts the delay (default 8 seconds).
+* **`onFormFactorOverride`**: Callback invoked when the simulated viewport changes (`native`, `tv`, `tablet`, `mobile`).
+
+### Platform notes (D-Pad / keyboard emulation)
+
+`DpadRemoteController` injects **`HardwareKeyboard`** events. That works reliably on **desktop** (macOS, Windows, Linux) and **Flutter web** during development. On **Android TV / Fire TV devices**, prefer a physical remote or platform focus APIs for final qualification; the overlay is still useful for resolution and telemetry on device builds.
+
+### QA builds only
+
+The qualification overlay, defect clipboard export, and screenshot helpers are intended for **QA / profile / debug** builds. Do not ship the overlay enabled in production store builds. Defect reports may contain tester-entered text.
 
 ---
 
