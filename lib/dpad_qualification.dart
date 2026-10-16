@@ -1,3 +1,4 @@
+/// Device simulation, D-Pad remote emulation, and QA overlays for Flutter TV apps.
 library;
 
 export 'src/device_qualification_overlay.dart';

@@ -58,4 +58,26 @@ void main() {
     expect(find.text('custom child'), findsOneWidget);
     expect(find.textContaining('Apple TV 4K'), findsOneWidget);
   });
+
+  testWidgets('ResolutionSimulator sets directional navigationMode for TV', (
+    WidgetTester tester,
+  ) async {
+    NavigationMode? capturedMode;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ResolutionSimulator(
+          device: SimulatedDevice.androidTv1080p,
+          child: Builder(
+            builder: (context) {
+              capturedMode = MediaQuery.of(context).navigationMode;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(capturedMode, NavigationMode.directional);
+  });
 }

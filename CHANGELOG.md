@@ -1,3 +1,10 @@
+## 1.1.2
+
+* Expanded overlay and remote tests (bezel toggle, `autoCycle`, all remote keys, report `parse` / `toPublicMap`, TV `navigationMode`).
+* Overlay UX: empty defect draft hint, clipboard failure snackbar, accessibility semantics on QA chrome.
+* README: `autoCycle`, platform keyboard notes, QA-only guidance; example Linux target for CI integration test.
+* CI: example `integration_test` job on Linux.
+
 ## 1.1.1
 
 * Pin CI and pub.dev publish workflows to Flutter 3.47.7 (Dart 3.12+ compatible with `environment: sdk: ^3.12.0`).
