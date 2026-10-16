@@ -8,23 +8,5 @@ on:
 jobs:
   publish:
     permissions:
-      id-token: write
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          flutter-version: '3.47.7'
-          cache: true
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Verify publish dry-run
-        run: dart pub publish --dry-run
-
-      - name: Publish package
-        run: dart pub publish --force
+      id-token: write # Required for pub.dev OIDC (configured in setup-dart)
+    uses: dart-lang/setup-dart/.github/workflows/publish.yml@v1
