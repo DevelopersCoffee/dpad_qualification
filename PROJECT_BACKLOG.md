@@ -2,53 +2,45 @@
 
 Status words: **Done**, **Pending**, **Blocked**, **Deferred**, **Needs verification**.
 
-Last updated after **1.1.2** prep (2026-10-16).
+**Last updated:** 2026-10-24 — v1.1 track **closed**; pub.dev **1.1.2**.
 
 ## P0 — repo health
 
-| ID | Item | Status | Notes |
-| --- | --- | --- | --- |
-| H-1 | CI passing on `main` | **Done** | Flutter **3.47.7**; dry-run clean with committed `analysis_options.yaml` exclude |
-| H-2 | Publish workflow SDK match | **Done** | `dart-lang/setup-dart` reusable publish workflow @ v1 |
-| H-3 | `analysis_options.yaml` exclude committed | **Done** | Since **1.1.1** |
+| ID | Item | Status |
+| --- | --- | --- |
+| H-1 | Verification on `main` | **Done** — `just check` (24 tests); GH Actions optional manual |
+| H-2 | Publish workflow SDK / OIDC | **Done** — `dart-lang/setup-dart` publish workflow; CLI or manual dispatch |
+| H-3 | `analysis_options.yaml` exclude | **Done** |
 
-## P1 — roadmap test gaps (Track B)
+## P1 — roadmap tests (Track B)
 
 | ID | Item | Status |
 | --- | --- | --- |
-| T-1 | Overlay bezel toggle | **Done** |
-| T-2 | All remote keys dispatch | **Done** |
-| T-3 | `autoCycle` timer | **Done** |
-| T-4 | Report `parse()` edge cases | **Done** |
-| T-5 | `toPublicMap()` / blocking findings | **Done** |
-| T-6 | Defect draft persistence | **Done** |
-| T-7 | TV `navigationMode` assertion | **Done** |
+| T-1 … T-7 | Overlay, remote, report, navigation tests | **Done** |
 | T-8 | Golden bezel | **Deferred** |
 
 ## P2 — docs & DX
 
 | ID | Item | Status |
 | --- | --- | --- |
-| D-1 | README `autoCycle` | **Done** |
-| D-2 | README platform / keyboard limits | **Done** |
-| D-3 | Dartdoc on public API | **Done** (library + existing type docs) |
-| D-4 | Example README screenshots | **Done** (capture instructions; assets optional) |
-| D-5 | Clipboard failure snackbar | **Done** |
-| D-6 | Empty defect draft hint | **Done** |
-| D-7 | Overlay semantics | **Done** |
+| D-1 … D-7 | README, overlay UX, semantics | **Done** |
+| D-8 | Document `justfile` in README | **Done** (see Contributing) |
 
 ## P3 — integration & downstream
 
 | ID | Item | Status |
 | --- | --- | --- |
-| I-1 | Example smoke test on CI | **Done** (`example/test/qualification_smoke_test.dart`) |
-| I-2 | Fire TV / Android TV hardware qual (Aika, etc.) | **Needs verification** |
-| I-3 | GitHub Release notes for v1.1.x | **Pending** |
+| I-1 | Example smoke test | **Done** — `example/test/qualification_smoke_test.dart`; run via `just test` |
+| I-2 | Fire TV / Android TV hardware qual | **Needs verification** |
+| I-3 | GitHub Release notes for v1.1.x | **Done** for **v1.1.2**; optional **v1.1.1** release page |
 
 ## Deferred (roadmap OUT scope)
 
-Unchanged — OS network throttling, built-in Apple/Roku presets, GitHub OAuth, package split, CI matrix product.
+OS network throttling, built-in Apple/Roku presets, GitHub OAuth issue creation, package split, CI matrix product.
 
-## Next publish
+## Next version (when scoped)
 
-**1.1.2** on branch (tests + UX + docs + CI). Publish via CLI or tag after merge (user/agent).
+1. Bump `pubspec` + `CHANGELOG.md`.
+2. `just check` && `just dry-run`.
+3. `just publish-force` or tag + manual **Publish to pub.dev** workflow.
+4. `just release X.Y.Z` for GitHub release + tag.

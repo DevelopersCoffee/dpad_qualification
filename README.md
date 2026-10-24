@@ -185,6 +185,20 @@ The qualification overlay, defect clipboard export, and screenshot helpers are i
 
 ---
 
+## Contributing & releases
+
+Development and releases are **local-first** using [`just`](https://github.com/casey/just) (see [`justfile`](justfile)):
+
+```bash
+just get      # dependencies
+just check    # format-check, analyze, all tests (24)
+just dry-run  # pub publish validation
+```
+
+GitHub Actions **CI** and **Publish to pub.dev** run only when triggered manually (`workflow_dispatch`). Project tracking: [`PROJECT_STATUS.md`](PROJECT_STATUS.md), [`PROJECT_BACKLOG.md`](PROJECT_BACKLOG.md).
+
+---
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
